@@ -1,0 +1,63 @@
+FleetFix Database Schema (PostgreSQL):
+
+
+vehicles (30 rows):
+  - id: INTEGER (PK)
+  - make: VARCHAR(50)
+  - model: VARCHAR(50)
+  - year: INTEGER
+  - vin: VARCHAR(17)
+  - license_plate: VARCHAR(20)
+  - vehicle_type: VARCHAR(30)
+  - status: VARCHAR(20)
+  - purchase_date: DATE
+  - current_mileage: INTEGER
+
+maintenance_records (286 rows):
+  - id: INTEGER (PK)
+  - vehicle_id: INTEGER -> vehicles.id
+  - service_date: DATE
+  - service_type: VARCHAR(50)
+  - cost: NUMERIC(10, 2)
+  - mileage_at_service: INTEGER
+
+telemetry (319,782 rows):
+  - id: INTEGER (PK)
+  - vehicle_id: INTEGER -> vehicles.id
+  - driver_id: INTEGER -> drivers.id
+  - timestamp: TIMESTAMP
+  - gps_lat: NUMERIC(10, 8)
+  - gps_lon: NUMERIC(11, 8)
+  - speed: NUMERIC(5, 2)
+  - fuel_level: NUMERIC(5, 2)
+  - engine_temp: NUMERIC(5, 2)
+  - odometer: INTEGER
+
+drivers (25 rows):
+  - id: INTEGER (PK)
+  - name: VARCHAR(100)
+  - license_number: VARCHAR(50)
+  - hire_date: DATE
+  - status: VARCHAR(20)
+
+driver_performance (6,706 rows):
+  - id: INTEGER (PK)
+  - driver_id: INTEGER -> drivers.id
+  - vehicle_id: INTEGER -> vehicles.id
+  - date: DATE
+  - harsh_braking_events: INTEGER
+  - rapid_acceleration_events: INTEGER
+  - speeding_events: INTEGER
+  - idle_time_minutes: INTEGER
+  - hours_driven: NUMERIC(5, 2)
+  - miles_driven: NUMERIC(8, 2)
+  - score: INTEGER
+
+fault_codes (28 rows):
+  - id: INTEGER (PK)
+  - vehicle_id: INTEGER -> vehicles.id
+  - timestamp: TIMESTAMP
+  - code: VARCHAR(10)
+  - description: TEXT
+  - severity: VARCHAR(20)
+  - resolved: BOOLEAN

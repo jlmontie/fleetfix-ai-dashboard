@@ -1,0 +1,175 @@
+# FleetFix Database Schema
+
+This is a PostgreSQL database for a fleet management system called FleetFix.
+FleetFix tracks vehicles, drivers, maintenance, real-time telemetry, and performance metrics.
+
+
+## Tables Overview
+
+- **vehicles** (30 rows): Fleet vehicles including make, model, mileage, and maintenance schedule
+- **maintenance_records** (286 rows): Historical maintenance and service records for vehicles
+- **telemetry** (319,782 rows): Real-time vehicle data including GPS location, speed, fuel level, and engine temperature
+- **drivers** (25 rows): Fleet drivers with license information and employment status
+- **driver_performance** (6,706 rows): Daily driver behavior metrics including harsh braking, speeding, and safety scores
+- **fault_codes** (28 rows): Diagnostic trouble codes (DTCs) from vehicle onboard diagnostics
+
+## Detailed Schema
+
+
+### vehicles
+Fleet vehicles including make, model, mileage, and maintenance schedule
+
+**Columns:**
+- `id` (INTEGER) [PRIMARY KEY, NOT NULL]
+- `make` (VARCHAR(50)) [NOT NULL]
+- `model` (VARCHAR(50)) [NOT NULL]
+- `year` (INTEGER) [NOT NULL]
+- `vin` (VARCHAR(17)) [NOT NULL]
+  Vehicle identification number (unique)
+- `license_plate` (VARCHAR(20)) [NOT NULL]
+  Vehicle license plate number
+- `vehicle_type` (VARCHAR(30)) [NOT NULL]
+  Type: cargo_van, pickup_truck, box_truck, sedan, or suv
+- `status` (VARCHAR(20)) [NOT NULL]
+  Vehicle status: active, maintenance, inactive, or retired
+- `purchase_date` (DATE) [NOT NULL]
+- `current_mileage` (INTEGER) [NOT NULL]
+  Total odometer reading in miles
+- `last_service_date` (DATE)
+- `next_service_due` (DATE)
+  Date when next maintenance is scheduled
+- `created_at` (TIMESTAMP)
+
+### maintenance_records
+Historical maintenance and service records for vehicles
+
+**Columns:**
+- `id` (INTEGER) [PRIMARY KEY, NOT NULL]
+- `vehicle_id` (INTEGER) [FOREIGN KEY -> vehicles.id, NOT NULL]
+- `service_date` (DATE) [NOT NULL]
+- `service_type` (VARCHAR(50)) [NOT NULL]
+  Type of service: oil_change, tire_rotation, brake_service, etc.
+- `description` (TEXT)
+- `cost` (NUMERIC(10, 2)) [NOT NULL]
+  Service cost in USD
+- `mileage_at_service` (INTEGER) [NOT NULL]
+  Vehicle mileage when service was performed
+- `next_service_mileage` (INTEGER)
+  Recommended mileage for next service
+- `performed_by` (VARCHAR(100))
+- `created_at` (TIMESTAMP)
+
+### telemetry
+Real-time vehicle data including GPS location, speed, fuel level, and engine temperature
+
+**Columns:**
+- `id` (INTEGER) [PRIMARY KEY, NOT NULL]
+- `vehicle_id` (INTEGER) [FOREIGN KEY -> vehicles.id, NOT NULL]
+- `driver_id` (INTEGER) [FOREIGN KEY -> drivers.id]
+- `timestamp` (TIMESTAMP) [NOT NULL]
+  Date and time of reading (recorded every 15-30 minutes)
+- `gps_lat` (NUMERIC(10, 8)) [NOT NULL]
+  GPS latitude coordinate
+- `gps_lon` (NUMERIC(11, 8)) [NOT NULL]
+  GPS longitude coordinate
+- `speed` (NUMERIC(5, 2)) [NOT NULL]
+  Vehicle speed in miles per hour
+- `fuel_level` (NUMERIC(5, 2)) [NOT NULL]
+  Fuel tank level as percentage (0-100)
+- `engine_temp` (NUMERIC(5, 2)) [NOT NULL]
+  Engine temperature in Fahrenheit
+- `odometer` (INTEGER) [NOT NULL]
+  Odometer reading at time of telemetry
+- `created_at` (TIMESTAMP)
+
+### drivers
+Fleet drivers with license information and employment status
+
+**Columns:**
+- `id` (INTEGER) [PRIMARY KEY, NOT NULL]
+- `name` (VARCHAR(100)) [NOT NULL]
+- `license_number` (VARCHAR(50)) [NOT NULL]
+  Unique driver license identifier
+- `hire_date` (DATE) [NOT NULL]
+  Date driver was hired by FleetFix
+- `status` (VARCHAR(20)) [NOT NULL]
+  Employment status: active, inactive, or suspended
+- `phone` (VARCHAR(20))
+- `created_at` (TIMESTAMP)
+
+### driver_performance
+Daily driver behavior metrics including harsh braking, speeding, and safety scores
+
+**Columns:**
+- `id` (INTEGER) [PRIMARY KEY, NOT NULL]
+- `driver_id` (INTEGER) [FOREIGN KEY -> drivers.id, NOT NULL]
+- `vehicle_id` (INTEGER) [FOREIGN KEY -> vehicles.id, NOT NULL]
+- `date` (DATE) [NOT NULL]
+  Date of performance record (one record per driver per vehicle per day)
+- `harsh_braking_events` (INTEGER) [NOT NULL]
+  Number of sudden/hard braking incidents
+- `rapid_acceleration_events` (INTEGER) [NOT NULL]
+  Number of aggressive acceleration incidents
+- `speeding_events` (INTEGER) [NOT NULL]
+  Number of times driver exceeded speed limit
+- `idle_time_minutes` (INTEGER) [NOT NULL]
+  Total minutes vehicle was idling
+- `hours_driven` (NUMERIC(5, 2)) [NOT NULL]
+- `miles_driven` (NUMERIC(8, 2)) [NOT NULL]
+- `score` (INTEGER) [NOT NULL]
+  Overall driver safety score (0-100, higher is better)
+- `created_at` (TIMESTAMP)
+
+### fault_codes
+Diagnostic trouble codes (DTCs) from vehicle onboard diagnostics
+
+**Columns:**
+- `id` (INTEGER) [PRIMARY KEY, NOT NULL]
+- `vehicle_id` (INTEGER) [FOREIGN KEY -> vehicles.id, NOT NULL]
+- `timestamp` (TIMESTAMP) [NOT NULL]
+  When the fault code was triggered
+- `code` (VARCHAR(10)) [NOT NULL]
+  OBD-II diagnostic trouble code (e.g., P0301, C1234)
+- `description` (TEXT) [NOT NULL]
+- `severity` (VARCHAR(20)) [NOT NULL]
+  Fault severity: critical, warning, or info
+- `resolved` (BOOLEAN) [NOT NULL]
+  Whether the fault has been fixed
+- `resolved_date` (TIMESTAMP)
+- `resolution_notes` (TEXT)
+- `created_at` (TIMESTAMP)
+
+## Key Relationships
+
+- drivers → driver_performance (one-to-many)
+- drivers → telemetry (one-to-many)
+- vehicles → maintenance_records (one-to-many)
+- vehicles → telemetry (one-to-many)
+- vehicles → driver_performance (one-to-many)
+- vehicles → fault_codes (one-to-many)
+
+## Important Notes
+
+- - All timestamps are in UTC
+- - Telemetry data is recorded every 15-30 minutes during work hours (6am-6pm)
+- - Driver performance is recorded daily (one record per driver per vehicle per day)
+- - Use CURRENT_DATE for queries about 'today' or 'yesterday'
+- - Vehicle status values: 'active', 'maintenance', 'inactive', 'retired'
+- - Driver status values: 'active', 'inactive', 'suspended'
+- - Fault code severity values: 'critical', 'warning', 'info'
+- - Service type values: 'oil_change', 'tire_rotation', 'brake_service', etc.
+
+## Example Query Patterns
+
+```sql
+-- Vehicles overdue for maintenance
+SELECT * FROM vehicles WHERE next_service_due < CURRENT_DATE;
+```
+```sql
+-- Driver performance in last 7 days
+SELECT * FROM driver_performance WHERE date >= CURRENT_DATE - INTERVAL '7 days';
+```
+```sql
+-- Active unresolved fault codes
+SELECT * FROM fault_codes WHERE resolved = FALSE;
+```
