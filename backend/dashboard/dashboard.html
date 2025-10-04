@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FleetFix AI Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .query-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+        
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .example-chip {
+            padding: 6px 12px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .example-chip:hover {
+            background: #dbeafe;
+            border-color: #93c5fd;
+        }
+        
+        .results-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        .results-section.show {
+            display: block;
+        }
+        
+        .sql-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .summary-box {
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .insight {
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+        
+        .insight.critical {
+            background: #fef2f2;
+            border-color: #dc2626;
+        }
+        
+        .insight.warning {
+            background: #fefce8;
+            border-color: #ca8a04;
+        }
+        
+        .insight.info {
+            background: #eff6ff;
+            border-color: #2563eb;
+        }
+        
+        .insight-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        
+        .recommendations {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .recommendations ol {
+            margin-left: 20px;
+        }
+        
+        .recommendations li {
+            margin: 8px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th {
+            background: #f8fafc;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #e5e7eb;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+        
+        tr:hover {
+            background: #f9fafb;
+        }
+        
+        .meta {
+            color: #666;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FleetFix AI Dashboard</h1>
+            <p class="subtitle">Ask questions about your fleet in natural language</p>
+        </header>
+        
+        <div class="query-section">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="queryInput" 
+                    placeholder="Ask a question... (e.g., 'Show me vehicles overdue for maintenance')"
+                    onkeypress="if(event.key === 'Enter') executeQuery()"
+                >
+                <button onclick="executeQuery()" id="submitBtn">Ask</button>
+            </div>
+            
+            <div class="examples">
+                <strong style="margin-right: 10px;">Try:</strong>
+                <span class="example-chip" onclick="setQuery(this.textContent)">Show vehicles overdue for maintenance</span>
+                <span class="example-chip" onclick="setQuery(this.textContent)">Which drivers had poor performance yesterday?</span>
+                <span class="example-chip" onclick="setQuery(this.textContent)">What are the unresolved critical fault codes?</span>
+                <span class="example-chip" onclick="setQuery(this.textContent)">Show me fuel efficiency trends</span>
+            </div>
+        </div>
+        
+        <div id="results" class="results-section"></div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        function setQuery(text) {
+            document.getElementById('queryInput').value = text;
+        }
+        
+        async function executeQuery() {
+            const input = document.getElementById('queryInput');
+            const query = input.value.trim();
+            
+            if (!query) {
+                alert('Please enter a question');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const resultsDiv = document.getElementById('results');
+            
+            // Show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Thinking...';
+            resultsDiv.className = 'results-section show';
+            resultsDiv.innerHTML = '<div class="loading">Analyzing your query...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        include_insights: true,
+                        max_rows: 100
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Query failed');
+                }
+                
+                displayResults(data);
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Ask';
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = '<h2>Results</h2>';
+            
+            // Summary
+            if (data.summary) {
+                html += `
+                    <div class="summary-box">
+                        <strong>Summary:</strong> ${data.summary}
+                    </div>
+                `;
+            }
+            
+            // SQL Query
+            html += `
+                <h3>Generated SQL</h3>
+                <div class="meta">Confidence: ${(data.confidence * 100).toFixed(0)}%</div>
+                <div class="sql-box">${escapeHtml(data.sql)}</div>
+            `;
+            
+            // Results Table
+            if (data.rows && data.rows.length > 0) {
+                html += `
+                    <h3>Data (${data.row_count} rows)</h3>
+                    <div class="meta">Execution time: ${data.execution_time_ms}ms</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                ${data.columns.map(col => `<th>${col}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.rows.slice(0, 20).map(row => `
+                                <tr>
+                                    ${data.columns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                if (data.row_count > 20) {
+                    html += `<div class="meta">Showing first 20 of ${data.row_count} rows</div>`;
+                }
+            } else {
+                html += '<div class="meta">No results found</div>';
+            }
+            
+            // Insights
+            if (data.insights && data.insights.length > 0) {
+                html += '<h3>Insights</h3>';
+                data.insights.forEach(insight => {
+                    html += `
+                        <div class="insight ${insight.severity}">
+                            <div class="insight-header">${insight.type} - ${insight.severity}</div>
+                            <div>${insight.message}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Recommendations
+            if (data.recommendations && data.recommendations.length > 0) {
+                html += `
+                    <div class="recommendations">
+                        <strong>Recommendations:</strong>
+                        <ol>
+                            ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ol>
+                    </div>
+                `;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatValue(value) {
+            if (value === null || value === undefined) {
+                return '<em>null</em>';
+            }
+            if (typeof value === 'number') {
+                return value.toLocaleString();
+            }
+            return escapeHtml(String(value));
+        }
+    </script>
+</body>
+</html>
