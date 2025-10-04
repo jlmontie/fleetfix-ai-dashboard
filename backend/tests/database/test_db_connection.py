@@ -3,81 +3,57 @@ FleetFix Database Connection Test
 Quick script to verify database setup and sample data
 """
 
+import pytest
 from database.config import db_config
 from database.models import Driver, Vehicle, MaintenanceRecord, Telemetry, DriverPerformance, FaultCode
 from datetime import date, timedelta
 from sqlalchemy import func, text
 
 
+@pytest.mark.database
 def test_connection():
     """Test basic database connection"""
-    print("Testing database connection...")
-    try:
-        with db_config.session_scope() as session:
-            result = session.execute(text("SELECT version()")).fetchone()
-            print(f"✓ Connected to PostgreSQL: {result[0][:50]}...")
-            return True
-    except Exception as e:
-        print(f"✗ Connection failed: {e}")
-        return False
+    with db_config.session_scope() as session:
+        result = session.execute(text("SELECT version()")).fetchone()
+        assert result is not None
+        assert "PostgreSQL" in result[0]
 
 
+@pytest.mark.database
 def test_tables_exist():
     """Check if all tables exist"""
-    print("\nChecking tables...")
     tables = ['drivers', 'vehicles', 'maintenance_records', 'telemetry', 
               'driver_performance', 'fault_codes']
     
-    try:
-        with db_config.session_scope() as session:
-            for table in tables:
-                count = session.execute(text(f"SELECT COUNT(*) FROM {table}")).fetchone()[0]
-                print(f"  {table:20s}: {count:6d} records")
-        return True
-    except Exception as e:
-        print(f"✗ Table check failed: {e}")
-        return False
+    with db_config.session_scope() as session:
+        for table in tables:
+            count = session.execute(text(f"SELECT COUNT(*) FROM {table}")).fetchone()[0]
+            assert count >= 0, f"Table {table} should exist and have non-negative count"
 
 
+@pytest.mark.database
 def test_data_quality():
     """Run some data quality checks"""
-    print("\nRunning data quality checks...")
-    
-    try:
-        with db_config.session_scope() as session:
-            # Check 1: All vehicles have valid mileage
-            invalid_mileage = session.query(Vehicle).filter(Vehicle.current_mileage < 0).count()
-            print(f"  Vehicles with invalid mileage: {invalid_mileage}")
-            assert invalid_mileage == 0, "Found vehicles with negative mileage"
-            
-            # Check 2: All maintenance records have valid costs
-            invalid_costs = session.query(MaintenanceRecord).filter(MaintenanceRecord.cost < 0).count()
-            print(f"  Maintenance records with invalid costs: {invalid_costs}")
-            assert invalid_costs == 0, "Found maintenance records with negative costs"
-            
-            # Check 3: All driver scores are between 0-100
-            invalid_scores = session.query(DriverPerformance).filter(
-                (DriverPerformance.score < 0) | (DriverPerformance.score > 100)
-            ).count()
-            print(f"  Driver performance records with invalid scores: {invalid_scores}")
-            assert invalid_scores == 0, "Found driver scores outside 0-100 range"
-            
-            # Check 4: All telemetry has realistic speed values
-            invalid_speed = session.query(Telemetry).filter(
-                (Telemetry.speed < 0) | (Telemetry.speed > 120)
-            ).count()
-            print(f"  Telemetry records with invalid speed: {invalid_speed}")
-            assert invalid_speed == 0, "Found telemetry with unrealistic speed"
-            
-            print("✓ All data quality checks passed")
-            return True
-            
-    except AssertionError as e:
-        print(f"✗ Data quality check failed: {e}")
-        return False
-    except Exception as e:
-        print(f"✗ Unexpected error: {e}")
-        return False
+    with db_config.session_scope() as session:
+        # Check 1: All vehicles have valid mileage
+        invalid_mileage = session.query(Vehicle).filter(Vehicle.current_mileage < 0).count()
+        assert invalid_mileage == 0, "Found vehicles with negative mileage"
+        
+        # Check 2: All maintenance records have valid costs
+        invalid_costs = session.query(MaintenanceRecord).filter(MaintenanceRecord.cost < 0).count()
+        assert invalid_costs == 0, "Found maintenance records with negative costs"
+        
+        # Check 3: All driver scores are between 0-100
+        invalid_scores = session.query(DriverPerformance).filter(
+            (DriverPerformance.score < 0) | (DriverPerformance.score > 100)
+        ).count()
+        assert invalid_scores == 0, "Found driver scores outside 0-100 range"
+        
+        # Check 4: All telemetry has realistic speed values
+        invalid_speed = session.query(Telemetry).filter(
+            (Telemetry.speed < 0) | (Telemetry.speed > 120)
+        ).count()
+        assert invalid_speed == 0, "Found telemetry with unrealistic speed"
 
 
 def show_sample_data():
