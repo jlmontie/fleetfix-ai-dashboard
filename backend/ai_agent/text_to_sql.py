@@ -4,21 +4,28 @@ Converts natural language queries to SQL using LLM
 """
 
 import os
-from typing import Dict, Optional, Tuple
+import json
+from typing import Dict, Optional, Tuple, List, Any
 from dataclasses import dataclass
 from datetime import datetime
 
 # LLM API imports
 try:
+    import anthropic
     from anthropic import Anthropic
     ANTHROPIC_AVAILABLE = True
 except ImportError:
+    anthropic = None
+    Anthropic = None
     ANTHROPIC_AVAILABLE = False
 
 try:
+    import openai
     from openai import OpenAI
     OPENAI_AVAILABLE = True
 except ImportError:
+    openai = None
+    OpenAI = None
     OPENAI_AVAILABLE = False
 
 
@@ -93,93 +100,93 @@ class TextToSQLConverter:
         """
         prompt = f"""You are a SQL expert for the FleetFix fleet management database.
 
-{self.schema_context}
+        {self.schema_context}
 
-# Your Task
+        # Your Task
 
-Convert the user's natural language query into a safe PostgreSQL SELECT query.
+        Convert the user's natural language query into a safe PostgreSQL SELECT query.
 
-# Important Rules
+        # Important Rules
 
-1. ONLY generate SELECT queries - never DELETE, UPDATE, DROP, INSERT, or other modifications
-2. Use proper PostgreSQL syntax
-3. Use CURRENT_DATE for "today", "yesterday", etc.
-4. Use table and column names exactly as shown in the schema
-5. Include appropriate JOINs when querying multiple tables
-6. Add WHERE clauses for filtering
-7. Use ORDER BY when results should be sorted
-8. Add LIMIT if the query implies "top N" or similar
-9. Handle NULL values appropriately
-10. Use aggregate functions (COUNT, AVG, SUM) when appropriate
+        1. ONLY generate SELECT queries - never DELETE, UPDATE, DROP, INSERT, or other modifications
+        2. Use proper PostgreSQL syntax
+        3. Use CURRENT_DATE for "today", "yesterday", etc.
+        4. Use table and column names exactly as shown in the schema
+        5. Include appropriate JOINs when querying multiple tables
+        6. Add WHERE clauses for filtering
+        7. Use ORDER BY when results should be sorted
+        8. Add LIMIT if the query implies "top N" or similar
+        9. Handle NULL values appropriately
+        10. Use aggregate functions (COUNT, AVG, SUM) when appropriate
 
-# User Query
+        # User Query
 
-"{user_query}"
+        "{user_query}"
 
-# Your Response Format
+        # Your Response Format
 
-Provide your response in this exact format:
+        Provide your response in this exact format:
 
-SQL:
-```sql
-[Your SQL query here]
-```
+        SQL:
+        ```sql
+        [Your SQL query here]
+        ```
 
-EXPLANATION:
-[Brief explanation of what the query does and why you structured it this way]
+        EXPLANATION:
+        [Brief explanation of what the query does and why you structured it this way]
 
-CONFIDENCE:
-[A number from 0.0 to 1.0 indicating your confidence in this query]
+        CONFIDENCE:
+        [A number from 0.0 to 1.0 indicating your confidence in this query]
 
-WARNINGS:
-[Any warnings or caveats about this query, or "None" if no warnings]
+        WARNINGS:
+        [Any warnings or caveats about this query, or "None" if no warnings]
 
-# Examples
+        # Examples
 
-User Query: "Show me vehicles overdue for maintenance"
-SQL:
-```sql
-SELECT id, make, model, license_plate, next_service_due,
-       CURRENT_DATE - next_service_due as days_overdue
-FROM vehicles
-WHERE next_service_due < CURRENT_DATE
-ORDER BY days_overdue DESC;
-```
+        User Query: "Show me vehicles overdue for maintenance"
+        SQL:
+        ```sql
+        SELECT id, make, model, license_plate, next_service_due,
+            CURRENT_DATE - next_service_due as days_overdue
+        FROM vehicles
+        WHERE next_service_due < CURRENT_DATE
+        ORDER BY days_overdue DESC;
+        ```
 
-EXPLANATION:
-This query finds vehicles where the next_service_due date has passed (is less than today's date). It calculates how many days overdue each vehicle is and sorts with the most overdue first.
+        EXPLANATION:
+        This query finds vehicles where the next_service_due date has passed (is less than today's date). It calculates how many days overdue each vehicle is and sorts with the most overdue first.
 
-CONFIDENCE:
-0.95
+        CONFIDENCE:
+        0.95
 
-WARNINGS:
-None
+        WARNINGS:
+        None
 
----
+        ---
 
-User Query: "Which drivers had poor performance yesterday?"
-SQL:
-```sql
-SELECT d.name, dp.score, dp.harsh_braking_events, dp.speeding_events
-FROM drivers d
-JOIN driver_performance dp ON d.id = dp.driver_id
-WHERE dp.date = CURRENT_DATE - INTERVAL '1 day'
-  AND dp.score < 70
-ORDER BY dp.score ASC;
-```
+        User Query: "Which drivers had poor performance yesterday?"
+        SQL:
+        ```sql
+        SELECT d.name, dp.score, dp.harsh_braking_events, dp.speeding_events
+        FROM drivers d
+        JOIN driver_performance dp ON d.id = dp.driver_id
+        WHERE dp.date = CURRENT_DATE - INTERVAL '1 day'
+        AND dp.score < 70
+        ORDER BY dp.score ASC;
+        ```
 
-EXPLANATION:
-This query joins drivers with their performance records from yesterday (CURRENT_DATE - 1 day), filters for scores below 70 (poor performance), and sorts by score with worst performers first.
+        EXPLANATION:
+        This query joins drivers with their performance records from yesterday (CURRENT_DATE - 1 day), filters for scores below 70 (poor performance), and sorts by score with worst performers first.
 
-CONFIDENCE:
-0.90
+        CONFIDENCE:
+        0.90
 
-WARNINGS:
-The threshold of 70 is arbitrary - adjust based on your definition of "poor performance".
+        WARNINGS:
+        The threshold of 70 is arbitrary - adjust based on your definition of "poor performance".
 
----
+        ---
 
-Now generate the SQL for the user's query above."""
+        Now generate the SQL for the user's query above."""
 
         return prompt
     
@@ -362,6 +369,273 @@ Now generate the SQL for the user's query above."""
         finally:
             # Restore original context
             self.schema_context = original_context
+
+
+class TextToSQLAgent:
+    """Converts natural language to SQL with chart recommendations."""
+    
+    # Valid chart types
+    VALID_CHART_TYPES = ['line', 'bar', 'grouped_bar', 'scatter', 'map', 'metric', 'table']
+    
+    def __init__(self, schema_context: str):
+        """
+        Initialize the agent.
+        
+        Args:
+            schema_context: Database schema description
+        """
+        if not ANTHROPIC_AVAILABLE or anthropic is None:
+            raise ImportError("anthropic package not installed. Run: pip install anthropic")
+        
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY not found in environment")
+        
+        self.client = anthropic.Anthropic(api_key=api_key)
+        self.schema_context = schema_context
+    
+    def generate_sql_and_chart(self, user_query: str) -> Dict[str, Any]:
+        """
+        Generate SQL query and chart recommendation from natural language.
+        
+        Args:
+            user_query: Natural language question
+            
+        Returns:
+            Dictionary with sql, chart_config, and reasoning
+        """
+        # Check for fast path chart type (but still generate SQL)
+        fast_path_chart = self._check_fast_path_chart(user_query)
+        
+        # Build the enhanced prompt
+        prompt = self._build_enhanced_prompt(user_query, fast_path_hint=fast_path_chart)
+        
+        try:
+            # Single AI call for both SQL and chart
+            response = self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2000,
+                temperature=0,
+                messages=[{
+                    "role": "user",
+                    "content": prompt
+                }]
+            )
+            
+            # Parse the structured response
+            result = self._parse_ai_response(response.content[0].text)
+            
+            # If we had a fast path chart determination, use it (override AI)
+            if fast_path_chart:
+                result['chart_config'] = fast_path_chart
+                result['fast_path'] = True
+            
+            # Validate and add fallback if needed
+            result = self._validate_and_fallback(result, user_query)
+            
+            return result
+            
+        except Exception as e:
+            print(f"AI call failed: {str(e)}")
+            return {
+                "sql": None,
+                "chart_config": {"type": "table", "reason": "Error in AI processing"},
+                "error": str(e),
+                "confidence": 0.0
+            }
+
+    def _check_fast_path_chart(self, user_query: str) -> Optional[Dict[str, Any]]:
+        """
+        Determine chart type from query text for obvious cases.
+        Returns chart config if fast path applies, None otherwise.
+        NOTE: This doesn't generate SQL - just pre-determines chart type.
+        """
+        query_lower = user_query.lower()
+        
+        # Single count/total queries
+        count_patterns = [
+            'how many', 'total number', 'count of', 'number of'
+        ]
+        if any(pattern in query_lower for pattern in count_patterns):
+            if 'by' not in query_lower and 'over time' not in query_lower:
+                # Likely a single metric
+                return {
+                    "type": "metric",
+                    "reason": "Single aggregate value query (fast path)",
+                    "confidence": 1.0
+                }
+        
+        # Geographic queries
+        geo_patterns = ['location', 'map', 'where are', 'gps', 'coordinates']
+        if any(pattern in query_lower for pattern in geo_patterns):
+            return {
+                "type": "map",
+                "reason": "Geographic/location query (fast path)",
+                "confidence": 1.0
+            }
+        
+        return None
+
+    def _build_enhanced_prompt(self, user_query: str, fast_path_hint: Optional[Dict] = None) -> str:
+        """Build prompt that requests both SQL and chart config."""
+        
+        # Add hint if we have a fast path chart type
+        hint_text = ""
+        if fast_path_hint:
+            hint_text = f"\n\nNOTE: Based on the query pattern, a '{fast_path_hint['type']}' chart is recommended, but still analyze the data and provide your best chart suggestion."
+        
+        return f"""You are a SQL expert for FleetFix's fleet management database. You will generate both a SQL query and a visualization recommendation.
+
+        {self.schema_context}
+
+        CRITICAL RULES:
+        1. Generate ONLY SELECT queries (no INSERT, UPDATE, DELETE, DROP)
+        2. Use proper JOINs when querying multiple tables
+        3. Include appropriate WHERE, ORDER BY, and LIMIT clauses
+        4. Return valid PostgreSQL syntax
+        5. Choose the best chart type for the data
+
+        AVAILABLE CHART TYPES:
+        - line: Time series data (requires date/time column + numeric values)
+        - bar: Categorical comparisons (categories + single metric)
+        - grouped_bar: Multiple metrics per category (categories + multiple metrics)
+        - scatter: Correlation analysis (two numeric columns)
+        - map: Geographic data (requires latitude + longitude columns)
+        - metric: Single aggregate value (count, sum, average)
+        - table: Complex data or detailed listings
+
+        USER QUERY: {user_query}{hint_text}
+
+        Respond with ONLY valid JSON in this exact format:
+        {{
+            "sql": "SELECT ...",
+            "chart_config": {{
+                "type": "line|bar|grouped_bar|scatter|map|metric|table",
+                "reason": "Why this chart type fits the data",
+                "x_column": "column name for x-axis (or null)",
+                "y_columns": ["column name(s) for y-axis"],
+                "title": "Chart title",
+                "confidence": 0.95
+            }},
+            "explanation": "Brief explanation of what the query does"
+        }}
+
+        IMPORTANT: 
+        - For time series, ensure x_column is the date/timestamp column
+        - For maps, x_column should be latitude column, y_columns should include longitude
+        - For metrics, y_columns should contain the aggregate column
+        - confidence should be 0.0-1.0 based on how well chart type matches data
+        """
+    
+    def _parse_ai_response(self, response_text: str) -> Dict[str, Any]:
+        """Parse JSON response from AI."""
+        try:
+            # Extract JSON from response (handle markdown code blocks)
+            response_text = response_text.strip()
+            if response_text.startswith('```'):
+                # Remove markdown code block markers
+                lines = response_text.split('\n')
+                response_text = '\n'.join(lines[1:-1])
+            
+            result = json.loads(response_text)
+            return result
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {str(e)}")
+            print(f"Response text: {response_text}")
+            return {
+                "sql": None,
+                "chart_config": {"type": "table", "reason": "Could not parse AI response"},
+                "error": "JSON parsing failed",
+                "confidence": 0.0
+            }
+    
+    def _validate_and_fallback(self, result: Dict[str, Any], user_query: str) -> Dict[str, Any]:
+        """
+        Validate AI response and apply fallback if needed.
+        
+        Args:
+            result: Parsed AI response
+            user_query: Original user query
+            
+        Returns:
+            Validated result with fallback if necessary
+        """
+        # Check if chart type is valid
+        chart_type = result.get('chart_config', {}).get('type')
+        confidence = result.get('chart_config', {}).get('confidence', 0.0)
+        
+        if chart_type not in self.VALID_CHART_TYPES:
+            print(f"Invalid chart type '{chart_type}', falling back to table")
+            result['chart_config'] = {
+                "type": "table",
+                "reason": "Invalid chart type from AI, using safe fallback",
+                "confidence": 0.5
+            }
+        
+        # Low confidence - fallback to table
+        if confidence < 0.6:
+            print(f"Low confidence ({confidence}), using table fallback")
+            result['chart_config']['type'] = 'table'
+            result['chart_config']['reason'] += " (Low confidence, showing table)"
+        
+        return result
+    
+    def _apply_rule_based_fallback(self, results: List[Dict], columns: List[str]) -> Dict[str, Any]:
+        """
+        Simple rule-based fallback when AI fails completely.
+        
+        Args:
+            results: Query results
+            columns: Column names
+            
+        Returns:
+            Chart config
+        """
+        # Single value
+        if len(results) == 1 and len(columns) == 1:
+            return {
+                "type": "metric",
+                "reason": "Single value result",
+                "y_columns": [columns[0]],
+                "confidence": 1.0
+            }
+        
+        # Check for time columns
+        time_keywords = ['date', 'time', 'timestamp', 'day', 'month', 'year']
+        time_cols = [col for col in columns if any(kw in col.lower() for kw in time_keywords)]
+        
+        if time_cols:
+            numeric_cols = [col for col in columns if col not in time_cols]
+            return {
+                "type": "line",
+                "reason": "Time series data detected (fallback)",
+                "x_column": time_cols[0],
+                "y_columns": numeric_cols,
+                "confidence": 0.7
+            }
+        
+        # Default to table
+        return {
+            "type": "table",
+            "reason": "Safe fallback for complex data",
+            "confidence": 0.5
+        }
+
+
+def generate_sql_with_chart(user_query: str, schema_context: str) -> Dict[str, Any]:
+    """
+    Convenience function to generate SQL and chart recommendation.
+    
+    Args:
+        user_query: Natural language question
+        schema_context: Database schema description
+        
+    Returns:
+        Dictionary with sql and chart_config
+    """
+    agent = TextToSQLAgent(schema_context)
+    return agent.generate_sql_and_chart(user_query)
 
 
 def main():
