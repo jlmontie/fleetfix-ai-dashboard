@@ -22,9 +22,12 @@ def test_root(client):
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert "message" in data
-    assert data["message"] == "FleetFix AI API"
+    assert "name" in data
+    assert data["name"] == "FleetFix AI Dashboard API"
     assert "version" in data
+    assert data["version"] == "1.0.0"
+    assert "status" in data
+    assert "endpoints" in data
 
 
 def test_health(client):
@@ -85,7 +88,7 @@ def test_query_valid(client):
     data = response.json()
     assert data["success"] is True
     assert "sql" in data
-    assert "rows" in data
+    assert "results" in data  # Changed from "rows" to "results"
     assert "row_count" in data
 
 

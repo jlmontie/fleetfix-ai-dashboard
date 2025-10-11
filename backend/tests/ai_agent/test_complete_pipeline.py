@@ -124,7 +124,12 @@ class TestEndToEndPipeline:
         executor = pipeline_components['executor']
         
         sql_result = converter.convert(user_query)
-        assert not sql_result.error
+        
+        # Handle rate limit errors gracefully
+        if sql_result.error and "429" in sql_result.error:
+            pytest.skip("API rate limit reached - skipping test")
+        
+        assert not sql_result.error, f"SQL generation failed: {sql_result.error}"
         
         validation = validator.validate(sql_result.sql)
         assert validation.is_valid

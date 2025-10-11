@@ -226,7 +226,7 @@ validation = validator.validate(sql_query)
 
 if validation.is_valid:
     # Safe to execute
-    execute_query(validation.sanitized_sql)
+    execute(validation.sanitized_sql)
 else:
     # Show errors
     print(validation.errors)

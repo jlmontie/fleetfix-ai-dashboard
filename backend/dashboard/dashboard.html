@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FleetFix AI Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,406 +13,736 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         h1 {
-            color: #2563eb;
-            margin-bottom: 5px;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 14px;
+            color: white;
+            margin-bottom: 24px;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .query-section {
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            margin-bottom: 24px;
         }
         
         .input-group {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
         
-        input[type="text"] {
+        input {
             flex: 1;
-            padding: 12px;
+            padding: 14px 20px;
             border: 2px solid #e5e7eb;
-            border-radius: 6px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.2s;
         }
         
-        input[type="text"]:focus {
+        input:focus {
             outline: none;
-            border-color: #2563eb;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
         button {
-            padding: 12px 24px;
-            background: #2563eb;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
         }
         
         button:hover {
-            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
         }
         
         button:disabled {
             background: #9ca3af;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .examples {
             display: flex;
-            flex-wrap: wrap;
             gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
         }
         
-        .example-chip {
-            padding: 6px 12px;
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 16px;
+        .example-label {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 500;
+            margin-right: 4px;
+        }
+        
+        .example-btn {
+            padding: 8px 14px;
+            background: #f9fafb;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
             font-size: 13px;
             cursor: pointer;
             transition: all 0.2s;
         }
         
-        .example-chip:hover {
-            background: #dbeafe;
-            border-color: #93c5fd;
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-1px);
         }
         
         .results-section {
             background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            margin-bottom: 24px;
+        }
+        
+        .chart-container {
+            margin-bottom: 32px;
+            min-height: 400px;
+            background: #fafbfc;
+            border-radius: 12px;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: none;
         }
         
-        .results-section.show {
-            display: block;
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 48px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
         
-        .sql-box {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 15px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
+        .metric-value {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .metric-label {
+            font-size: 18px;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.2);
+        }
+        
+        .summary-card h3 {
             font-size: 14px;
-            overflow-x: auto;
-            margin: 15px 0;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            opacity: 0.9;
         }
         
-        .summary-box {
-            background: #eff6ff;
-            border-left: 4px solid #2563eb;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
+        .summary-card p {
+            font-size: 16px;
+            line-height: 1.6;
+            font-weight: 500;
         }
         
-        .insight {
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 6px;
-            border-left: 4px solid;
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
         }
         
-        .insight.critical {
+        .insight-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+        
+        .insight-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .insight-card h3 {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+        .insight-item {
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .insight-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .insight-item.severity-critical {
+            border-left-color: #ef4444;
             background: #fef2f2;
-            border-color: #dc2626;
         }
         
-        .insight.warning {
-            background: #fefce8;
-            border-color: #ca8a04;
+        .insight-item.severity-warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
         }
         
-        .insight.info {
+        .insight-item.severity-info {
+            border-left-color: #3b82f6;
             background: #eff6ff;
-            border-color: #2563eb;
         }
         
         .insight-header {
-            font-weight: 600;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         
-        .recommendations {
-            background: #f0fdf4;
-            border-left: 4px solid #10b981;
-            padding: 15px;
-            margin: 15px 0;
+        .insight-type {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 13px;
+        }
+        
+        .insight-confidence {
+            font-size: 11px;
+            color: #6b7280;
+            background: white;
+            padding: 4px 8px;
             border-radius: 4px;
         }
         
-        .recommendations ol {
-            margin-left: 20px;
+        .insight-message {
+            color: #4b5563;
+            line-height: 1.6;
+            font-size: 14px;
         }
         
-        .recommendations li {
-            margin: 8px 0;
+        .recommendations-list {
+            list-style: none;
+            padding: 0;
         }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-        }
-        
-        th {
-            background: #f8fafc;
+        .recommendations-list li {
             padding: 12px;
-            text-align: left;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            padding-left: 40px;
+            position: relative;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+        
+        .recommendations-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 12px;
+            color: #10b981;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
             border-bottom: 2px solid #e5e7eb;
-            font-weight: 600;
-            font-size: 14px;
+            padding-bottom: 0;
         }
         
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
+        .tab {
+            padding: 12px 20px;
+            background: transparent;
+            color: #6b7280;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-weight: 500;
             font-size: 14px;
+            transition: all 0.2s;
+            position: relative;
         }
         
-        tr:hover {
+        .tab:hover {
+            color: #667eea;
             background: #f9fafb;
         }
         
-        .meta {
-            color: #666;
+        .tab.active {
+            color: #667eea;
+            background: white;
+        }
+        
+        .tab.active:after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: #fafbfc;
+            border-radius: 0 8px 8px 8px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        .sql-code {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
             font-size: 13px;
-            margin: 10px 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
         }
         
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #666;
+            padding: 60px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+        
+        .loading p {
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 20px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
         .error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
+            background: white;
+            border: 2px solid #ef4444;
             color: #991b1b;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 15px 0;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(239, 68, 68, 0.1);
+        }
+        
+        .error:before {
+            content: "⚠️";
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        
+        .success-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        .success-badge:before {
+            content: "✓";
+            font-size: 16px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .metric-value {
+                font-size: 48px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>FleetFix AI Dashboard</h1>
-            <p class="subtitle">Ask questions about your fleet in natural language</p>
-        </header>
+        <h1>FleetFix AI Dashboard</h1>
         
         <div class="query-section">
             <div class="input-group">
                 <input 
                     type="text" 
                     id="queryInput" 
-                    placeholder="Ask a question... (e.g., 'Show me vehicles overdue for maintenance')"
-                    onkeypress="if(event.key === 'Enter') executeQuery()"
+                    placeholder="Ask a question about your fleet..."
                 >
-                <button onclick="executeQuery()" id="submitBtn">Ask</button>
+                <button id="queryBtn">Ask Question</button>
             </div>
             
             <div class="examples">
-                <strong style="margin-right: 10px;">Try:</strong>
-                <span class="example-chip" onclick="setQuery(this.textContent)">Show vehicles overdue for maintenance</span>
-                <span class="example-chip" onclick="setQuery(this.textContent)">Which drivers had poor performance yesterday?</span>
-                <span class="example-chip" onclick="setQuery(this.textContent)">What are the unresolved critical fault codes?</span>
-                <span class="example-chip" onclick="setQuery(this.textContent)">Show me fuel efficiency trends</span>
+                <span class="example-label">Try:</span>
+                <button class="example-btn" data-query="How many vehicles do we have?">Total vehicles</button>
+                <button class="example-btn" data-query="Show fuel efficiency over the last 7 days">Fuel trend</button>
+                <button class="example-btn" data-query="Compare miles driven by vehicle type">Miles by type</button>
+                <button class="example-btn" data-query="Which drivers had harsh braking events this week?">Driver events</button>
+                <button class="example-btn" data-query="Show me vehicles with overdue maintenance">Overdue maintenance</button>
             </div>
         </div>
         
-        <div id="results" class="results-section"></div>
+        <div id="resultsContainer" class="hidden">
+            <div class="results-section">
+                <div class="success-badge">Query executed successfully</div>
+                
+                <div id="chartContainer" class="chart-container"></div>
+                
+                <div id="summarySection" class="summary-card hidden">
+                    <h3>📋 Summary</h3>
+                    <p id="summaryText"></p>
+                </div>
+                
+                <div class="insights-grid">
+                    <div id="insightsSection" class="insight-card hidden">
+                        <h3>💡 Insights</h3>
+                        <div id="insightsList"></div>
+                    </div>
+                    
+                    <div id="recommendationsSection" class="insight-card hidden">
+                        <h3>✅ Recommendations</h3>
+                        <ul id="recommendationsList" class="recommendations-list"></ul>
+                    </div>
+                </div>
+                
+                <div id="technicalDetails">
+                    <div class="tabs">
+                        <button class="tab active" data-tab="sql">SQL Query</button>
+                        <button class="tab" data-tab="config">Chart Config</button>
+                        <button class="tab" data-tab="explanation">Explanation</button>
+                    </div>
+                    
+                    <div id="sqlTab" class="tab-content active">
+                        <div class="sql-code" id="sqlCode"></div>
+                    </div>
+                    
+                    <div id="configTab" class="tab-content">
+                        <div class="sql-code" id="chartConfig"></div>
+                    </div>
+                    
+                    <div id="explanationTab" class="tab-content">
+                        <p id="explanationText" style="color: #4b5563; line-height: 1.8;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loadingContainer" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Analyzing your question...</p>
+        </div>
+        
+        <div id="errorContainer" class="error hidden"></div>
     </div>
-    
+
+    <!-- Template for insight items -->
+    <template id="insightTemplate">
+        <div class="insight-item">
+            <div class="insight-header">
+                <span class="insight-type"></span>
+                <span class="insight-confidence"></span>
+            </div>
+            <p class="insight-message"></p>
+        </div>
+    </template>
+
     <script>
-        const API_BASE = 'http://localhost:8001';
+        // Constants
+        const API_URL = 'http://localhost:8000/api/query';
         
-        function setQuery(text) {
-            document.getElementById('queryInput').value = text;
-        }
+        const SEVERITY_ICONS = {
+            'info': 'ℹ️',
+            'warning': '⚠️',
+            'critical': '🚨'
+        };
         
+        // Elements
+        const elements = {
+            queryInput: document.getElementById('queryInput'),
+            queryBtn: document.getElementById('queryBtn'),
+            resultsContainer: document.getElementById('resultsContainer'),
+            loadingContainer: document.getElementById('loadingContainer'),
+            errorContainer: document.getElementById('errorContainer'),
+            chartContainer: document.getElementById('chartContainer'),
+            summarySection: document.getElementById('summarySection'),
+            summaryText: document.getElementById('summaryText'),
+            insightsSection: document.getElementById('insightsSection'),
+            insightsList: document.getElementById('insightsList'),
+            recommendationsSection: document.getElementById('recommendationsSection'),
+            recommendationsList: document.getElementById('recommendationsList'),
+            explanationText: document.getElementById('explanationText'),
+            sqlCode: document.getElementById('sqlCode'),
+            chartConfig: document.getElementById('chartConfig')
+        };
+        
+        // Event Listeners
+        elements.queryBtn.addEventListener('click', executeQuery);
+        elements.queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') executeQuery();
+        });
+        
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                elements.queryInput.value = btn.dataset.query;
+            });
+        });
+        
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                document.getElementById(`${tabName}Tab`).classList.add('active');
+            });
+        });
+        
+        // Main Functions
         async function executeQuery() {
-            const input = document.getElementById('queryInput');
-            const query = input.value.trim();
+            const query = elements.queryInput.value.trim();
+            if (!query) return;
             
-            if (!query) {
-                alert('Please enter a question');
-                return;
-            }
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const resultsDiv = document.getElementById('results');
-            
-            // Show loading
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Thinking...';
-            resultsDiv.className = 'results-section show';
-            resultsDiv.innerHTML = '<div class="loading">Analyzing your query...</div>';
+            showLoading();
             
             try {
-                const response = await fetch(`${API_BASE}/api/query`, {
+                const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query: query,
-                        include_insights: true,
-                        max_rows: 100
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
                 });
                 
                 const data = await response.json();
                 
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Query failed');
+                if (!data.success) {
+                    throw new Error(data.error || 'Query failed');
                 }
                 
                 displayResults(data);
-                
             } catch (error) {
-                resultsDiv.innerHTML = `
-                    <div class="error">
-                        <strong>Error:</strong> ${error.message}
-                    </div>
-                `;
+                showError(error.message);
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Ask';
+                hideLoading();
             }
         }
         
         function displayResults(data) {
-            const resultsDiv = document.getElementById('results');
+            console.log('API Response:', data);
             
-            let html = '<h2>Results</h2>';
+            // Show results container
+            elements.resultsContainer.classList.remove('hidden');
             
-            // Summary
-            if (data.summary) {
-                html += `
-                    <div class="summary-box">
-                        <strong>Summary:</strong> ${data.summary}
-                    </div>
-                `;
-            }
+            // Display chart
+            renderChart(data);
             
-            // SQL Query
-            html += `
-                <h3>Generated SQL</h3>
-                <div class="meta">Confidence: ${(data.confidence * 100).toFixed(0)}%</div>
-                <div class="sql-box">${escapeHtml(data.sql)}</div>
-            `;
+            // Display summary
+            displaySummary(data.summary);
             
-            // Results Table
-            if (data.rows && data.rows.length > 0) {
-                html += `
-                    <h3>Data (${data.row_count} rows)</h3>
-                    <div class="meta">Execution time: ${data.execution_time_ms}ms</div>
-                    <table>
-                        <thead>
-                            <tr>
-                                ${data.columns.map(col => `<th>${col}</th>`).join('')}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.rows.slice(0, 20).map(row => `
-                                <tr>
-                                    ${data.columns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
-                
-                if (data.row_count > 20) {
-                    html += `<div class="meta">Showing first 20 of ${data.row_count} rows</div>`;
-                }
+            // Display insights
+            displayInsights(data.insights);
+            
+            // Display recommendations
+            displayRecommendations(data.recommendations);
+            
+            // Display explanation (in tab)
+            if (data.explanation) {
+                elements.explanationText.textContent = data.explanation;
             } else {
-                html += '<div class="meta">No results found</div>';
+                elements.explanationText.textContent = 'No explanation available.';
             }
             
-            // Insights
-            if (data.insights && data.insights.length > 0) {
-                html += '<h3>Insights</h3>';
-                data.insights.forEach(insight => {
-                    html += `
-                        <div class="insight ${insight.severity}">
-                            <div class="insight-header">${insight.type} - ${insight.severity}</div>
-                            <div>${insight.message}</div>
-                        </div>
-                    `;
-                });
-            }
-            
-            // Recommendations
-            if (data.recommendations && data.recommendations.length > 0) {
-                html += `
-                    <div class="recommendations">
-                        <strong>Recommendations:</strong>
-                        <ol>
-                            ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                        </ol>
-                    </div>
-                `;
-            }
-            
-            resultsDiv.innerHTML = html;
+            // Display SQL and config
+            elements.sqlCode.textContent = data.sql || 'N/A';
+            elements.chartConfig.textContent = JSON.stringify(data.chart_config, null, 2);
         }
         
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function displaySummary(summary) {
+            if (summary) {
+                elements.summaryText.textContent = summary;
+                elements.summarySection.classList.remove('hidden');
+            } else {
+                elements.summarySection.classList.add('hidden');
+            }
         }
         
-        function formatValue(value) {
-            if (value === null || value === undefined) {
-                return '<em>null</em>';
+        function renderChart(data) {
+            elements.chartContainer.innerHTML = '';
+            
+            if (!data.plotly_chart) {
+                elements.chartContainer.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 40px;">No visualization available</p>';
+                return;
             }
-            if (typeof value === 'number') {
-                return value.toLocaleString();
+            
+            if (data.chart_config?.type === 'metric') {
+                renderMetricCard(data.plotly_chart);
+            } else {
+                Plotly.newPlot(
+                    elements.chartContainer,
+                    data.plotly_chart.data,
+                    data.plotly_chart.layout,
+                    data.plotly_chart.config
+                );
             }
-            return escapeHtml(String(value));
+        }
+        
+        function renderMetricCard(metricData) {
+            const card = document.createElement('div');
+            card.className = 'metric-card';
+            
+            const value = document.createElement('div');
+            value.className = 'metric-value';
+            value.textContent = metricData.value;
+            
+            const label = document.createElement('div');
+            label.className = 'metric-label';
+            label.textContent = metricData.label;
+            
+            card.appendChild(value);
+            card.appendChild(label);
+            elements.chartContainer.appendChild(card);
+        }
+        
+        function displayInsights(insights) {
+            if (!insights || insights.length === 0) {
+                elements.insightsSection.classList.add('hidden');
+                return;
+            }
+            
+            elements.insightsList.innerHTML = '';
+            const template = document.getElementById('insightTemplate');
+            
+            insights.forEach(insight => {
+                const clone = template.content.cloneNode(true);
+                const insightItem = clone.querySelector('.insight-item');
+                
+                // Add severity class
+                insightItem.classList.add(`severity-${insight.severity}`);
+                
+                const icon = SEVERITY_ICONS[insight.severity] || '💡';
+                clone.querySelector('.insight-type').textContent = 
+                    `${icon} ${insight.type.toUpperCase()}`;
+                clone.querySelector('.insight-confidence').textContent = 
+                    `${(insight.confidence * 100).toFixed(0)}%`;
+                clone.querySelector('.insight-message').textContent = 
+                    insight.message;
+                
+                elements.insightsList.appendChild(clone);
+            });
+            
+            elements.insightsSection.classList.remove('hidden');
+        }
+        
+        function displayRecommendations(recommendations) {
+            if (!recommendations || recommendations.length === 0) {
+                elements.recommendationsSection.classList.add('hidden');
+                return;
+            }
+            
+            elements.recommendationsList.innerHTML = '';
+            
+            recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.textContent = rec;
+                elements.recommendationsList.appendChild(li);
+            });
+            
+            elements.recommendationsSection.classList.remove('hidden');
+        }
+        
+        function showLoading() {
+            elements.loadingContainer.classList.remove('hidden');
+            elements.resultsContainer.classList.add('hidden');
+            elements.errorContainer.classList.add('hidden');
+            elements.queryBtn.disabled = true;
+        }
+        
+        function hideLoading() {
+            elements.loadingContainer.classList.add('hidden');
+            elements.queryBtn.disabled = false;
+        }
+        
+        function showError(message) {
+            elements.errorContainer.textContent = message;
+            elements.errorContainer.classList.remove('hidden');
         }
     </script>
 </body>
