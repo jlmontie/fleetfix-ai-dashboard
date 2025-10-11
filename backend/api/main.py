@@ -20,7 +20,7 @@ from ai_agent.schema_context import SchemaContextBuilder
 from ai_agent.text_to_sql import TextToSQLAgent
 from ai_agent.sql_validator import SQLValidator
 from ai_agent.query_executor import QueryExecutor
-from ai_agent.insight_generator import InsightGenerator
+from ai_agent.insight_generator import InsightGenerator, Insight
 from visualizer.plotly_generator import generate_plotly_chart
 
 # Import visualization router
@@ -103,14 +103,6 @@ class QueryRequest(BaseModel):
         }
 
 
-class InsightResponse(BaseModel):
-    """AI-generated insight"""
-    type: str
-    severity: str
-    message: str
-    confidence: float
-
-
 class QueryResponse(BaseModel):
     """Response model for query results with visualization."""
     success: bool
@@ -125,7 +117,7 @@ class QueryResponse(BaseModel):
     chart_config: Optional[Dict[str, Any]] = None
     plotly_chart: Optional[Dict[str, Any]] = None
     summary: Optional[str] = None
-    insights: Optional[List[InsightResponse]] = None
+    insights: Optional[List[Insight]] = None
     recommendations: Optional[List[str]] = None
     error: Optional[str] = None
 
@@ -248,11 +240,11 @@ async def execute_query(
         if exec_result.rows and chart_config:
             try:
                 # Convert rows to dict format for plotly generator
-                results = [dict(zip(exec_result.columns, row)) for row in exec_result.rows]
+                # results = [dict(zip(exec_result.columns, row)) for row in exec_result.rows]
                 
                 plotly_chart = generate_plotly_chart(
                     chart_config=chart_config,
-                    results=results,
+                    results=exec_result.rows,
                     columns=exec_result.columns
                 )
             except Exception as e:
@@ -275,17 +267,8 @@ async def execute_query(
             if not insight_result.error:
                 summary = insight_result.summary
                 recommendations = insight_result.recommendations
-                
-                insights_list = [
-                    InsightResponse(
-                        type=i.type,
-                        severity=i.severity,
-                        message=i.message,
-                        confidence=i.confidence
-                    )
-                    for i in insight_result.insights
-                ]
-        
+                insights_list = insight_result.insights
+        print(f"\nInsights list: {insights_list}\n")
         # Convert rows to dict format for response
         results = [dict(zip(exec_result.columns, row)) for row in exec_result.rows]
         
