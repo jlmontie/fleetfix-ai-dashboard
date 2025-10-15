@@ -171,17 +171,26 @@ export default function Dashboard() {
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Metrics</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {keyMetrics.map((metric, index) => (
-              <MetricCard
-                key={index}
-                title={metric.title}
-                value={metric.value}
-                unit={metric.unit}
-                change={metric.change}
-                icon={metric.icon}
-                color={metric.color}
-              />
-            ))}
+            {keyMetrics.map((metric, index) => {
+              const Icon = metric.icon
+              const iconColorClasses = {
+                green: 'text-green-600',
+                yellow: 'text-yellow-600',
+                red: 'text-red-600',
+                blue: 'text-blue-600',
+              }
+              return (
+                <MetricCard
+                  key={index}
+                  title={metric.title}
+                  value={metric.value}
+                  unit={metric.unit}
+                  change={metric.change}
+                  icon={<Icon size={20} className={iconColorClasses[metric.color]} />}
+                  color={metric.color}
+                />
+              )
+            })}
           </div>
         </section>
 

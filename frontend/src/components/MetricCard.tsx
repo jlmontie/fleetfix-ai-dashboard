@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown, Minus, LucideIcon } from 'lucide-react'
+import { ArrowUp, ArrowDown, Minus } from 'lucide-react'
 import { cn, formatNumber, formatPercent } from '../lib/utils'
 import type { MetricCardProps } from '../types'
 
@@ -6,23 +6,16 @@ export default function MetricCard({
   title,
   value,
   change,
-  icon: Icon,
+  icon,
   color = 'blue',
   unit = '',
   loading = false,
-}: MetricCardProps & { icon?: LucideIcon }) {
+}: MetricCardProps) {
   const colorClasses = {
     green: 'bg-green-50 border-green-200 text-green-700',
     yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
     red: 'bg-red-50 border-red-200 text-red-700',
     blue: 'bg-blue-50 border-blue-200 text-blue-700',
-  }
-
-  const iconColorClasses = {
-    green: 'text-green-600',
-    yellow: 'text-yellow-600',
-    red: 'text-red-600',
-    blue: 'text-blue-600',
   }
 
   const getTrendColor = (value: number) => {
@@ -54,9 +47,9 @@ export default function MetricCard({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-600">{title}</h3>
-        {Icon && (
+        {icon && (
           <div className={cn('p-2 rounded-lg', colorClasses[color])}>
-            <Icon size={20} className={iconColorClasses[color]} />
+            {icon}
           </div>
         )}
       </div>
