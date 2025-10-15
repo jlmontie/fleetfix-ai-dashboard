@@ -97,11 +97,12 @@ async def startup_event():
     
     # Initialize RAG system (optional - graceful fallback if not available)
     print("\nInitializing RAG system...")
+    chroma_db_path = os.environ.get("CHROMA_PERSIST_DIR", "./chroma_db")
     rag_success = initialize_rag_integration(
         company_docs_path="company_docs",
-        chroma_db_path="../chroma_db",
-        max_context_chunks=5,
-        enable_reranking=True
+        chroma_db_path=chroma_db_path,
+        max_context_chunks=int(os.environ.get("MAX_CONTEXT_CHUNKS", "5")),
+        enable_reranking=os.environ.get("ENABLE_RERANKING", "true").lower() == "true"
     )
     
     if rag_success:

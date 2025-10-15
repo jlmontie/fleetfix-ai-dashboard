@@ -18,7 +18,7 @@ class APIClient {
     // Add response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => {
+      (error: AxiosError<{ error?: string; detail?: string }>) => {
         console.error('API Error:', error)
         
         if (error.response) {
