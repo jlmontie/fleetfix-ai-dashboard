@@ -15,16 +15,31 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from database.config import get_db
-from ai_agent.schema_context import SchemaContextBuilder
-from ai_agent.text_to_sql import TextToSQLAgent
-from ai_agent.sql_validator import SQLValidator
-from ai_agent.query_executor import QueryExecutor
-from ai_agent.insight_generator import InsightGenerator, Insight
-from visualizer.plotly_generator import generate_plotly_chart
-
-# Import visualization router
-from api.visualize import router as visualize_router
+# Support both direct execution (uvicorn api.main:app) and package imports (pytest with backend.api.main)
+try:
+    # When run directly from backend directory
+    from database.config import get_db_connection
+    from ai_agent.schema_context import SchemaContextBuilder
+    from ai_agent.text_to_sql import TextToSQLAgent
+    from ai_agent.sql_validator import SQLValidator
+    from ai_agent.query_executor import QueryExecutor
+    from ai_agent.insight_generator import InsightGenerator, Insight
+    from visualizer.plotly_generator import generate_plotly_chart
+    from api.visualize import router as visualize_router
+    from api.rag_integration import initialize_rag_integration, get_rag_integration
+    from api.digest import get_daily_digest
+except ModuleNotFoundError:
+    # When imported as backend.api.main (e.g., in pytest)
+    from backend.database.config import get_db_connection
+    from backend.ai_agent.schema_context import SchemaContextBuilder
+    from backend.ai_agent.text_to_sql import TextToSQLAgent
+    from backend.ai_agent.sql_validator import SQLValidator
+    from backend.ai_agent.query_executor import QueryExecutor
+    from backend.ai_agent.insight_generator import InsightGenerator, Insight
+    from backend.visualizer.plotly_generator import generate_plotly_chart
+    from backend.api.visualize import router as visualize_router
+    from backend.api.rag_integration import initialize_rag_integration, get_rag_integration
+    from backend.api.digest import get_daily_digest
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -80,6 +95,21 @@ async def startup_event():
     insight_generator = InsightGenerator(provider=provider)
     print(f"✓ Insight generator ready ({provider})")
     
+    # Initialize RAG system (optional - graceful fallback if not available)
+    print("\nInitializing RAG system...")
+    rag_success = initialize_rag_integration(
+        company_docs_path="company_docs",
+        chroma_db_path="../chroma_db",
+        max_context_chunks=5,
+        enable_reranking=True
+    )
+    
+    if rag_success:
+        print("✓ RAG system ready")
+    else:
+        print("⚠ RAG system not available - API will run without document retrieval")
+        print("  Run 'python scripts/setup_rag.py' to enable RAG features")
+    
     print("=" * 50)
     print("FleetFix API Ready!")
     print("=" * 50)
@@ -107,6 +137,7 @@ class QueryResponse(BaseModel):
     """Response model for query results with visualization."""
     success: bool
     query: str
+    query_classification: Optional[str] = None  # "database", "document", "hybrid"
     sql: Optional[str] = None
     explanation: Optional[str] = None
     confidence: Optional[float] = None
@@ -119,6 +150,10 @@ class QueryResponse(BaseModel):
     summary: Optional[str] = None
     insights: Optional[List[Insight]] = None
     recommendations: Optional[List[str]] = None
+    # RAG fields
+    rag_answer: Optional[str] = None
+    citations: Optional[List[str]] = None
+    retrieved_docs: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
 
 
@@ -151,7 +186,7 @@ async def root():
 
 
 @app.get("/health", response_model=HealthResponse, tags=["General"])
-async def health_check(db: Session = Depends(get_db)):
+async def health_check(db: Session = Depends(get_db_connection)):
     """Health check endpoint"""
     try:
         # Test database connection
@@ -173,19 +208,59 @@ async def health_check(db: Session = Depends(get_db)):
 @app.post("/api/query", response_model=QueryResponse, tags=["Query"])
 async def execute_query(
     request: QueryRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_connection)
 ):
     """
-    Execute natural language query with visualization.
+    Execute natural language query with visualization and document retrieval.
     
     This endpoint orchestrates:
-    1. Text-to-SQL conversion with chart recommendation (single AI call)
-    2. SQL validation
-    3. Query execution
-    4. Plotly chart generation
-    5. Insight generation
+    1. Query classification (database/document/hybrid)
+    2. Text-to-SQL conversion with chart recommendation (for database queries)
+    3. Document retrieval (for document queries)
+    4. SQL validation and execution
+    5. Plotly chart generation
+    6. Insight generation with RAG context
     """
     try:
+        # Get RAG integration
+        rag = get_rag_integration()
+        
+        # Step 1: Classify query
+        query_classification = "database"  # Default
+        if rag and rag.is_available():
+            query_classification = rag.classify_query(request.query)
+        
+        # Step 2: Handle document-only queries
+        if query_classification == "document":
+            if not rag or not rag.is_available():
+                return QueryResponse(
+                    success=False,
+                    error="Document retrieval not available. Please run setup script.",
+                    query=request.query,
+                    query_classification=query_classification
+                )
+            
+            # Answer using documents only
+            doc_response = rag.answer_document_query(request.query)
+            
+            if not doc_response:
+                return QueryResponse(
+                    success=False,
+                    error="Failed to retrieve documents",
+                    query=request.query,
+                    query_classification=query_classification
+                )
+            
+            return QueryResponse(
+                success=True,
+                query=request.query,
+                query_classification=query_classification,
+                rag_answer=doc_response["answer"],
+                citations=doc_response.get("citations"),
+                retrieved_docs=doc_response.get("retrieved_docs")
+            )
+        
+        # Step 3: Continue with database query (database or hybrid)
         # Step 1: Generate SQL and chart recommendation (single AI call)
         text_to_sql_agent = TextToSQLAgent(schema_context)
         sql_result = text_to_sql_agent.generate_sql_and_chart(request.query)
@@ -272,10 +347,28 @@ async def execute_query(
         # Convert rows to dict format for response
         results = [dict(zip(exec_result.columns, row)) for row in exec_result.rows]
         
+        # Step 6: Enhance with RAG for hybrid queries
+        rag_answer = None
+        citations = None
+        retrieved_docs = None
+        
+        if query_classification == "hybrid" and rag and rag.is_available():
+            enhancement = rag.enhance_database_results(
+                query=request.query,
+                database_results=results,
+                sql_query=sql_query
+            )
+            
+            if enhancement:
+                rag_answer = enhancement.get("enhanced_answer")
+                citations = enhancement.get("citations")
+                retrieved_docs = enhancement.get("retrieved_docs")
+        
         # Return comprehensive response
         return QueryResponse(
             success=True,
             query=request.query,
+            query_classification=query_classification,
             sql=sql_query,
             explanation=explanation,
             confidence=confidence,
@@ -287,7 +380,10 @@ async def execute_query(
             plotly_chart=plotly_chart,
             summary=summary,
             insights=insights_list,
-            recommendations=recommendations
+            recommendations=recommendations,
+            rag_answer=rag_answer,
+            citations=citations,
+            retrieved_docs=retrieved_docs
         )
     
     except HTTPException:
@@ -298,7 +394,8 @@ async def execute_query(
         return QueryResponse(
             success=False,
             error=f"Unexpected error: {str(e)}",
-            query=request.query
+            query=request.query,
+            query_classification=query_classification if 'query_classification' in locals() else None
         )
 
 
@@ -367,9 +464,54 @@ async def get_example_queries():
                     "What's the trend in driver performance over the last month?",
                     "Which routes have the most safety incidents?"
                 ]
+            },
+            {
+                "category": "Policies & Procedures (RAG)",
+                "queries": [
+                    "What is fault code P0420 and what should I do?",
+                    "Explain the oil change procedure",
+                    "What's our driver score policy?",
+                    "How do I handle a check engine light?"
+                ]
+            },
+            {
+                "category": "Hybrid Queries (Database + RAG)",
+                "queries": [
+                    "Show vehicles with P0420 and explain what it means",
+                    "List vehicles overdue for maintenance and tell me what services are needed",
+                    "Which drivers have low scores and what's our coaching policy?"
+                ]
             }
         ]
     }
+
+
+@app.get("/api/daily-digest", tags=["Insights"])
+async def get_digest(force_refresh: bool = False):
+    """
+    Get daily digest with adaptive insights.
+    
+    The daily digest analyzes recent fleet changes and identifies the most 
+    important issues requiring attention. Results are cached for 24 hours 
+    unless force_refresh is True.
+    
+    Args:
+        force_refresh: Force regeneration of digest even if cache is valid
+        
+    Returns:
+        Dictionary with generated_at timestamp and list of insights
+    """
+    try:
+        digest = get_daily_digest(force_refresh=force_refresh)
+        return digest
+    except Exception as e:
+        print(f"Error generating daily digest: {e}")
+        # Return empty digest on error
+        return {
+            "generated_at": datetime.now().isoformat(),
+            "insights": [],
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import func, text
 from datetime import date, timedelta
 
-from database.config import db_config
-from database.models import (
+from backend.database.config import db_config
+from backend.database.models import (
     Driver, Vehicle, MaintenanceRecord, 
     Telemetry, DriverPerformance, FaultCode
 )

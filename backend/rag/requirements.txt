@@ -1,0 +1,35 @@
+# FleetFix RAG System Requirements
+
+# Core RAG Dependencies
+chromadb==0.4.22
+sentence-transformers==2.3.1
+anthropic==0.18.1
+
+# Vector / ML Libraries
+numpy==1.26.3
+torch==2.1.2  # Required by sentence-transformers
+
+# Optional: OpenAI Embeddings (if using OpenAI instead of local)
+# openai==1.10.0
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+
+# Database (for full system)
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.25
+
+# API Framework (for backend integration)
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+
+# Development / Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+black==24.1.1
+ruff==0.1.14
+
+# Monitoring / Logging
+loguru==0.7.2

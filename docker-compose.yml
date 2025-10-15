@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: fleetfix-postgres
+    environment:
+      - POSTGRES_USER=fleetfix
+      - POSTGRES_PASSWORD=fleetfix_dev
+      - POSTGRES_DB=fleetfix
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - fleetfix-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleetfix"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fleetfix-backend
+    environment:
+      - DATABASE_URL=postgresql://fleetfix:fleetfix_dev@postgres:5432/fleetfix
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - EMBEDDING_MODEL=local
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+      - MAX_CONTEXT_CHUNKS=5
+      - ENABLE_RERANKING=true
+      - API_PORT=8000
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist vector database
+      - chroma-db:/app/chroma_db
+      # Mount company docs for easy updates
+      - ./company_docs:/app/company_docs:ro
+      # Development: mount code for live reload (optional)
+      # - ./backend:/app
+    networks:
+      - fleetfix-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fleetfix-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - fleetfix-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  fleetfix-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  chroma-db:
+    driver: local
+

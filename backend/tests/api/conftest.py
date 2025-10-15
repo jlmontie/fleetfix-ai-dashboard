@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 # Set testing flag
 os.environ["TESTING"] = "true"
 
-from api.main import app, startup_event
+from backend.api.main import app, startup_event
 
 
 @pytest.fixture(scope="session", autouse=True)

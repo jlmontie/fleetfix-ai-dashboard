@@ -195,6 +195,9 @@ public
 *.sqlite
 *.sqlite3
 
+# ChromaDB / RAG vector database
+chroma_db/
+
 # Logs
 logs
 *.log

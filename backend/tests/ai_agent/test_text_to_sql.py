@@ -6,10 +6,10 @@ import pytest
 import os
 from sqlalchemy import text
 
-from ai_agent.schema_context import SchemaContextBuilder
-from ai_agent.text_to_sql import TextToSQLConverter
-from ai_agent.sql_validator import SQLValidator
-from database.config import db_config
+from backend.ai_agent.schema_context import SchemaContextBuilder
+from backend.ai_agent.text_to_sql import TextToSQLConverter
+from backend.ai_agent.sql_validator import SQLValidator
+from backend.database.config import db_config
 
 
 @pytest.fixture(scope="module")
