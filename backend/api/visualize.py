@@ -6,7 +6,11 @@ Generates Plotly chart specifications from query results.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from visualizer.plotly_generator import generate_plotly_chart
+
+try:
+    from visualizer.plotly_generator import generate_plotly_chart
+except ModuleNotFoundError:
+    from backend.visualizer.plotly_generator import generate_plotly_chart
 
 router = APIRouter()
 

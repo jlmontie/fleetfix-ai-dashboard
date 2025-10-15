@@ -6,11 +6,11 @@ Tests: NL Query → SQL → Execution → Insights
 import pytest
 import os
 
-from ai_agent.schema_context import SchemaContextBuilder
-from ai_agent.text_to_sql import TextToSQLConverter
-from ai_agent.sql_validator import SQLValidator
-from ai_agent.query_executor import QueryExecutor, ResultFormatter
-from ai_agent.insight_generator import InsightGenerator
+from backend.ai_agent.schema_context import SchemaContextBuilder
+from backend.ai_agent.text_to_sql import TextToSQLConverter
+from backend.ai_agent.sql_validator import SQLValidator
+from backend.ai_agent.query_executor import QueryExecutor, ResultFormatter
+from backend.ai_agent.insight_generator import InsightGenerator
 
 
 @pytest.fixture(scope="module")

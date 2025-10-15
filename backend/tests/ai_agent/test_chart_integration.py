@@ -2,7 +2,7 @@
 
 import pytest
 import os
-from ai_agent.text_to_sql import TextToSQLAgent
+from backend.ai_agent.text_to_sql import TextToSQLAgent
 
 
 @pytest.fixture

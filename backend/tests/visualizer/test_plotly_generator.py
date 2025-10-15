@@ -1,7 +1,7 @@
 """Tests for Plotly generator."""
 
 import pytest
-from visualizer.plotly_generator import PlotlyGenerator
+from backend.visualizer.plotly_generator import PlotlyGenerator
 
 
 def test_metric_card():

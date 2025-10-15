@@ -3,7 +3,7 @@ Schema context builder tests
 """
 
 import pytest
-from ai_agent.schema_context import SchemaContextBuilder
+from backend.ai_agent.schema_context import SchemaContextBuilder
 
 
 @pytest.fixture(scope="module")

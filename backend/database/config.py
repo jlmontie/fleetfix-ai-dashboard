@@ -71,13 +71,13 @@ class DatabaseConfig:
 db_config = DatabaseConfig()
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db_connection() -> Generator[Session, None, None]:
     """
     Dependency function for FastAPI
     
     Usage in FastAPI endpoint:
         @app.get("/vehicles")
-        def get_vehicles(db: Session = Depends(get_db)):
+        def get_vehicles(db: Session = Depends(get_db_connection)):
             return db.query(Vehicle).all()
     """
     session = db_config.get_session()

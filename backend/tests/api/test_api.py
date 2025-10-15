@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 import sys
 import os
 
-from api.main import app
+from backend.api.main import app
 
 
 @pytest.fixture
