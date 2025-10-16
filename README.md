@@ -41,7 +41,7 @@ cp .env.example .env
 docker-compose up -d
 
 # Initialize RAG system (one-time)
-docker-compose exec backend python scripts/setup_rag.py
+docker-compose exec backend python rag/setup_rag.py
 
 # Seed database with sample data
 docker-compose exec backend python database/seed_data.py --reset --inject-events
@@ -226,7 +226,7 @@ The RAG system provides context-aware responses by retrieving relevant informati
 Setup requires one-time document indexing:
 
 ```bash
-python scripts/setup_rag.py
+python -m rag.setup_rag
 ```
 
 ## Performance

@@ -146,7 +146,7 @@ class TestEndToEndIntegration:
             chroma_db_path = Path(__file__).parent.parent.parent.parent / "chroma_db"
             
             if not company_docs_path.exists() or not chroma_db_path.exists():
-                pytest.skip("Production RAG not available. Run scripts/setup_rag.py first.")
+                pytest.skip("Production RAG not available. Run `python -m rag.setup_rag` first.")
             
             if not os.getenv('ANTHROPIC_API_KEY') and not os.getenv('OPENAI_API_KEY'):
                 pytest.skip("API key required for end-to-end tests")

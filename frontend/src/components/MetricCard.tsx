@@ -32,7 +32,7 @@ export default function MetricCard({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200/50 p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="h-5 w-32 skeleton rounded"></div>
           <div className="h-10 w-10 skeleton rounded-lg"></div>
@@ -44,7 +44,7 @@ export default function MetricCard({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all hover:-translate-y-1">
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-600">{title}</h3>
         {icon && (

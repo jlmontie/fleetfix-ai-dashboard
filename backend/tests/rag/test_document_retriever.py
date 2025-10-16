@@ -332,7 +332,7 @@ class TestProductionRetriever:
         """Create retriever with actual company documents"""
         chroma_path = Path(__file__).parent.parent.parent.parent / "chroma_db"
         if not chroma_path.exists():
-            pytest.skip("Production ChromaDB not found. Run scripts/setup_rag.py first.")
+            pytest.skip("Production ChromaDB not found. Run `python -m rag.setup_rag` first.")
         
         vector_store = VectorStore(
             collection_name="fleetfix_docs",
