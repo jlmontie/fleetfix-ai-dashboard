@@ -88,17 +88,18 @@ export default function Dashboard() {
       const response = await apiClient.executeQuery(query, history)
 
       // Generate assistant message content
+      // Priority: Show the ANSWER first (insight/rag_answer), not the explanation
       let assistantContent = ''
       
       if (response.query_classification === 'document') {
         // Document query - show RAG answer
         assistantContent = response.rag_answer || 'Here is what I found in the documentation.'
       } else if (response.query_classification === 'hybrid') {
-        // Hybrid query - combine database results with RAG
+        // Hybrid query - show RAG answer (combines DB + docs)
         assistantContent = response.rag_answer || `Found ${response.row_count || 0} results.`
       } else {
-        // Database query - show insight or explanation
-        assistantContent = response.insight || response.explanation || `Found ${response.row_count || 0} results.`
+        // Database query - prioritize insight (the answer), explanation is shown separately
+        assistantContent = response.insight || `Found ${response.row_count || 0} results.`
       }
 
       const assistantMessage: ChatMessage = {
@@ -129,21 +130,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-[1920px] mx-auto px-6 py-4">
+      <header className="bg-white/95 backdrop-blur-sm shadow-lg">
+        <div className="max-w-[1920px] mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900">
                 FleetFix AI Dashboard
               </h1>
-              <p className="text-sm text-gray-600 mt-0.5">
+              <p className="text-sm text-gray-600 mt-1">
                 Adaptive intelligence for your fleet
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm font-medium text-gray-600">
                 {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   year: 'numeric', 
@@ -156,7 +157,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-[1920px] mx-auto px-6 py-6 space-y-6">
+      <main className="max-w-[1920px] mx-auto px-6 py-8 space-y-6">
         {/* Today's Highlights Section */}
         <section>
           <DailyInsights
@@ -206,8 +207,8 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-[1920px] mx-auto px-6 py-4 text-center text-sm text-gray-600">
+      <footer className="bg-white/90 backdrop-blur-sm mt-12">
+        <div className="max-w-[1920px] mx-auto px-6 py-4 text-center text-sm text-gray-600 font-medium">
           FleetFix AI Dashboard • Built with React, TypeScript, and Claude AI
         </div>
       </footer>

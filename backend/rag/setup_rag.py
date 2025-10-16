@@ -1,16 +1,12 @@
 """
 One-command setup script for FleetFix RAG system
 
-Run: python setup_rag.py
+Run: python -m rag.setup_rag
 """
 
 import os
 import sys
 from pathlib import Path
-
-# Add project root to Python path so we can import backend modules
-project_root = Path(__file__).parent.parent.absolute()
-sys.path.insert(0, str(project_root))
 
 
 def print_header(text):
@@ -101,7 +97,7 @@ def process_documents():
     print_header("Processing Documents")
     
     try:
-        from backend.rag.document_processor import DocumentProcessor
+        from rag.document_processor import DocumentProcessor
         
         processor = DocumentProcessor("company_docs")
         chunks = processor.process_all_documents()
@@ -125,7 +121,7 @@ def create_vector_store(chunks):
     print_header("Creating Vector Store")
     
     try:
-        from backend.rag.vector_store import VectorStore
+        from rag.vector_store import VectorStore
         
         # Check if vector store already exists
         chroma_dir = Path("chroma_db")
@@ -186,7 +182,7 @@ def test_retrieval(vector_store):
     print_header("Testing Retrieval System")
     
     try:
-        from backend.rag.document_retriever import DocumentRetriever
+        from rag.document_retriever import DocumentRetriever
         
         retriever = DocumentRetriever(
             vector_store=vector_store,

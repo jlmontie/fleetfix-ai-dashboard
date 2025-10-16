@@ -118,7 +118,7 @@ class RAGIntegration:
             if not os.path.exists(self.chroma_db_path):
                 logger.error(
                     f"ChromaDB not found at {self.chroma_db_path}. "
-                    "Please run setup script: python scripts/setup_rag.py"
+                    "Please run setup script: python -m rag.setup_rag"
                 )
                 return False
             
@@ -135,7 +135,7 @@ class RAGIntegration:
             if doc_count == 0:
                 logger.error(
                     "Vector database is empty. "
-                    "Please run setup script: python scripts/setup_rag.py"
+                    "Please run setup script: python -m rag.setup_rag"
                 )
                 return False
             

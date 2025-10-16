@@ -109,7 +109,7 @@ async def startup_event():
         print("✓ RAG system ready")
     else:
         print("⚠ RAG system not available - API will run without document retrieval")
-        print("  Run 'python scripts/setup_rag.py' to enable RAG features")
+        print("  Run 'python -m rag.setup_rag' to enable RAG features")
     
     print("=" * 50)
     print("FleetFix API Ready!")

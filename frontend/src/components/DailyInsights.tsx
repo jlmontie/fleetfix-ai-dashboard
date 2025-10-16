@@ -55,7 +55,7 @@ export default function DailyInsights({ insights, isLoading, onRefresh, lastUpda
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Zap className="text-primary-600" size={24} />

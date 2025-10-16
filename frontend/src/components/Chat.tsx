@@ -106,42 +106,15 @@ export default function Chat({ messages, onSendMessage, isLoading, exampleQuerie
               </div>
             )}
 
+            {/* Main Answer */}
             <p className={cn(
-              'text-sm whitespace-pre-wrap',
+              'text-sm whitespace-pre-wrap font-medium',
               isUser ? 'text-white' : 'text-gray-900'
             )}>
               {message.content}
             </p>
 
-            {/* RAG Answer */}
-            {message.queryResponse?.rag_answer && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                  {message.queryResponse.rag_answer}
-                </p>
-                {renderCitations(message.queryResponse.citations)}
-              </div>
-            )}
-
-            {/* SQL Query */}
-            {message.queryResponse?.sql && (
-              <div className="mt-3">
-                <button
-                  onClick={() => toggleSQL(message.id)}
-                  className="flex items-center gap-2 text-xs font-medium text-primary-600 hover:text-primary-700"
-                >
-                  {expandedSQL[message.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  {expandedSQL[message.id] ? 'Hide' : 'Show'} SQL Query
-                </button>
-                {expandedSQL[message.id] && (
-                  <pre className="mt-2 p-3 bg-gray-50 rounded text-xs font-mono overflow-x-auto">
-                    <code>{message.queryResponse.sql}</code>
-                  </pre>
-                )}
-              </div>
-            )}
-
-            {/* Chart */}
+            {/* Chart - show immediately after answer */}
             {message.queryResponse?.plotly_chart && (
               <div className="mt-3">
                 <Chart plotlyConfig={message.queryResponse.plotly_chart} />
@@ -154,6 +127,41 @@ export default function Chat({ messages, onSendMessage, isLoading, exampleQuerie
                 {message.queryResponse.row_count} {message.queryResponse.row_count === 1 ? 'result' : 'results'}
                 {message.queryResponse.execution_time_ms && (
                   <> • {message.queryResponse.execution_time_ms.toFixed(0)}ms</>
+                )}
+              </div>
+            )}
+
+            {/* RAG Citations */}
+            {message.queryResponse?.citations && message.queryResponse.citations.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                {renderCitations(message.queryResponse.citations)}
+              </div>
+            )}
+
+            {/* Explanation - show after the answer for database queries */}
+            {!isUser && message.queryResponse?.explanation && message.queryResponse.query_classification === 'database' && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="text-xs font-semibold text-gray-700 mb-1">How this query works:</p>
+                <p className="text-xs text-gray-600">
+                  {message.queryResponse.explanation}
+                </p>
+              </div>
+            )}
+
+            {/* SQL Query - formatted with line breaks */}
+            {message.queryResponse?.sql && (
+              <div className="mt-3">
+                <button
+                  onClick={() => toggleSQL(message.id)}
+                  className="flex items-center gap-2 text-xs font-medium text-primary-600 hover:text-primary-700"
+                >
+                  {expandedSQL[message.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  {expandedSQL[message.id] ? 'Hide' : 'Show'} SQL Query
+                </button>
+                {expandedSQL[message.id] && (
+                  <pre className="mt-2 p-3 bg-gray-50 rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                    <code>{message.queryResponse.sql}</code>
+                  </pre>
                 )}
               </div>
             )}
@@ -184,7 +192,7 @@ export default function Chat({ messages, onSendMessage, isLoading, exampleQuerie
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[600px]">
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
